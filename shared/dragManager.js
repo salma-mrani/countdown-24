@@ -5,7 +5,7 @@ export class DragManager {
         this.dragObjects = []
     }
 
-    createDragObject({target, isOverlapping, onStartDrag, onStopDrag}) {
+    createDragObject({ target, isOverlapping, onStartDrag, onStopDrag }) {
 
         const obj = {
             target: target,
@@ -19,7 +19,7 @@ export class DragManager {
         return obj
     }
 
-    update() {
+    update(mouseX, mouseY, mouseIsPressed) {
 
         for (const obj of this.dragObjects) {
 
@@ -65,3 +65,5 @@ export class DragManager {
         }
     }
 }
+export const len = (x, y) => Math.sqrt(x * x + y * y)
+export const dist = (x1, y1, x2, y2) => len(x1 - x2, y1 - y2)

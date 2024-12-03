@@ -1,5 +1,3 @@
-
-
 export const VerletMode = {
 
     Push: "push",
@@ -100,7 +98,7 @@ export class VerletPhysics {
 
     update(dt) {
 
-        dt = Math.min(1 / 30, dt ?? deltaTime / 1000)
+        dt = Math.min(1 / 30, dt)
 
         const dtSqr = dt * dt
         for (const body of this.bodies) {
@@ -141,12 +139,12 @@ export class VerletPhysics {
                 }
                 const diffX = link.bodyB.positionX - link.bodyA.positionX;
                 const diffY = link.bodyB.positionY - link.bodyA.positionY;
-                const distance = max(0.00001, dist(diffX, diffY, 0, 0))
+                const distance = Math.max(0.00001, dist(diffX, diffY, 0, 0))
                 let offsetOnLine = (link.distance - distance) / distance * link.stiffness;
                 if (link.mode == VerletMode.Push)
-                    offsetOnLine = max(offsetOnLine, 0)
+                    offsetOnLine = Math.max(offsetOnLine, 0)
                 if (link.mode == VerletMode.Pull)
-                    offsetOnLine = min(offsetOnLine, 0)
+                    offsetOnLine = Math.min(offsetOnLine, 0)
 
                 const offsetX = diffX * offsetOnLine;
                 const offsetY = diffY * offsetOnLine;
@@ -226,3 +224,10 @@ export class VerletPhysics {
         body.accelerationY += y ?? 0
     }
 }
+
+
+export const len = (x, y) => Math.sqrt(x * x + y * y)
+export const dist = (x1, y1, x2, y2) => len(x1 - x2, y1 - y2)
+export const map = (v, s0, s1, e0, e1) =>
+    e0 + ((v - s0) / (s1 - s0)) * (e1 - e0)
+export const lerp = (v1, v2, t) => v1 + (v2 - v1) * t

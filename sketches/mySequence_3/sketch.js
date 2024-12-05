@@ -1,85 +1,153 @@
 import { createEngine } from "../../shared/engine.js";
+import { Spring } from "../../shared/spring.js";
 
-const { renderer, run, input } = createEngine();
+const { renderer, run, input, math } = createEngine();
 const { ctx, canvas } = renderer;
 
-let isRevealed = false; // Flag to check if the number area has been revealed
-const revealRadius = 10; // Radius of the area around the number to scratch
+let isRevealed = false; // Flag pour vérifier si le numéro a été révélé
+const revealRadius = 10; // Rayon autour du numéro à gratter
 
-// Function to generate random coordinates
+const fontSize = canvas.height / 2;
+
+// Charger l'image
+const coinImage = new Image();
+coinImage.src = "./coin.png"; // Chemin vers l'image
+
+// Fonction pour générer des coordonnées aléatoires
 function getRandomPosition() {
-  const x = Math.random() * (canvas.width - 100) + 30; // Prevent the number from being too close to the edges
-  const y = Math.random() * (canvas.height - 100) + 30;
+  const paddingX = fontSize * 0.3;
+  const paddingY = fontSize * 0.45;
+  const x = math.lerp(paddingX, canvas.width - paddingX, Math.random());
+  const y = math.lerp(paddingY, canvas.height - paddingY, Math.random());
   return { x, y };
 }
 
 const scratchCanvas = new OffscreenCanvas(canvas.width, canvas.height);
 const scratchCtx = scratchCanvas.getContext("2d");
 scratchCtx.globalCompositeOperation = "source-over";
-scratchCtx.fillStyle = "green";
+scratchCtx.fillStyle = "black";
 scratchCtx.fillRect(0, 0, scratchCanvas.width, scratchCanvas.height);
 
 let prevMouseX;
 let prevMouseY;
 
-// Random position
+let isFinished = false;
+let finishedTime = 0;
+
+let canvasY = 0;
+let canvasYSpeed = 0;
+
+// Position aléatoire pour le texte
 const { x, y } = getRandomPosition();
 
-run(() => {
-  // Mouse position
+let glowPhase = 0; // Phase pour l'animation de brillance
+
+run((deltaTime) => {
+  // Mise à jour de la phase de brillance
+  glowPhase += deltaTime * 3; // Augmenter la vitesse de l'effet de brillance
+  if (glowPhase > Math.PI * 2) glowPhase -= Math.PI * 2;
+
+  // Position de la souris
   const mouseX = input.getX();
   const mouseY = input.getY();
 
-  // If the number is fully revealed, animate it to grow and disappear
-  let scale = 1;
-  if (isRevealed) {
-    const animationSpeed = 0.1;
-
-    if (scale < 5) {
-      // Increase the size
-      scale += animationSpeed;
-    }
+  if (isFinished) finishedTime += deltaTime;
+  if (finishedTime > 1) {
+    canvasYSpeed += 1000 * deltaTime;
   }
-  // Check if the area around the number has been completely scratched
-  //if (!isRevealed && isAreaRevealed()) {
-  //isRevealed = true;
-  // Black background disappears
-  // ctx.clearRect(0, 0, canvas.width, canvas.height);
-  //}
+  canvasY += canvasYSpeed * deltaTime;
 
-  ///ctx.globalCompositeOperation = "source-over";
+  ctx.translate(0, canvasY);
 
-  // Set the context to apply scaling
+  // Sauvegarde du contexte
   ctx.save();
-  ctx.translate(x, y); // Move the canvas origin to the text center
-  ctx.scale(scale, scale); // Apply scaling
+  ctx.translate(x, y); // Déplace l'origine vers le centre du texte
 
-  // Draw the number "3" with scaling
+  // Dessiner le texte avec effet de brillance
   ctx.textBaseline = "middle";
   ctx.textAlign = "center";
-  ctx.font = `${canvas.height / 2}px impact`;
-  ctx.fillStyle = "black";
+  ctx.font = `${fontSize}px impact`;
+
+  // Dégradé animé pour l'effet de brillance
+  const gradient = ctx.createLinearGradient(-fontSize, 0, fontSize, 0);
+  const glowPosition = (Math.sin(glowPhase) + 1) / 2; // Position oscillante entre 0 et 1
+  gradient.addColorStop(0, "yellow");
+  gradient.addColorStop(glowPosition, "green"); // Couleur brillante
+  gradient.addColorStop(1, "yellow");
+
+  ctx.fillStyle = gradient;
+
+  // Ajouter un effet de lumière avec ombres
+  ctx.shadowColor = "rgba(255, 255, 0, 0.6)";
+  ctx.shadowBlur = 20;
+
+  // Dessiner le texte
   ctx.fillText("3", 0, 0);
 
+  const metrics = ctx.measureText("3");
   ctx.restore();
 
-  // Fill the canvas background with a color (e.g., green) that does not work
-
+  // Grattage (scratch) sur le canvas secondaire
   if (input.hasStarted() && input.isPressed()) {
-    scratchCtx.globalCompositeOperation = "destination-out"; // Erase mode
-
+    scratchCtx.globalCompositeOperation = "destination-out"; // Mode effaçage
     scratchCtx.fillStyle = "red";
     scratchCtx.lineJoin = "round";
     scratchCtx.lineCap = "round";
     scratchCtx.beginPath();
     scratchCtx.lineWidth = 50;
-    if (input.isd()) scratchCtx.moveTo(prevMouseX, prevMouseY);
+
+    if (input.isDown()) {
+      scratchCtx.moveTo(mouseX + 1, mouseY);
+    } else {
+      scratchCtx.moveTo(prevMouseX, prevMouseY);
+    }
     scratchCtx.lineTo(mouseX, mouseY);
     scratchCtx.stroke();
   }
 
+  ctx.fillRect(0, -canvas.height * 10 + 1, canvas.width, canvas.height * 10);
   ctx.drawImage(scratchCanvas, 0, 0);
+
+  const textWidth = metrics.width;
+  const textHeight =
+    metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+  const textX = x - textWidth / 2;
+  const textY = y - metrics.actualBoundingBoxAscent;
+  const imageData = scratchCtx.getImageData(
+    textX,
+    textY,
+    textWidth,
+    textHeight
+  );
+
+  const data = imageData.data;
+  let count = 0;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const a = data[i + 3];
+    if (a > 0) count++;
+  }
+
+  const totalCount = data.length / 4;
+  const fill = count / totalCount;
+
+  if (fill < 0.06) {
+    isFinished = true;
+    isRevealed = true;
+  }
 
   prevMouseX = mouseX;
   prevMouseY = mouseY;
+
+  // Dessiner l'image `coin.png` sous le curseur
+  const coinSize = 100; // Taille de l'image de la pièce
+  if (coinImage.complete) {
+    ctx.drawImage(
+      coinImage,
+      mouseX - coinSize / 2,
+      mouseY - coinSize / 2,
+      coinSize,
+      coinSize
+    );
+  }
 });

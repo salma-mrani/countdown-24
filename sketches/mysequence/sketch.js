@@ -29,8 +29,6 @@ for (let x = 0; x < gridSize; x++) {
   }
 }
 
-console.log(originalPositions);
-
 // Mélanger les positions
 
 let currentPositions = [...originalPositions];
@@ -164,17 +162,17 @@ function drawPuzzlePieceFill(sourceCanvas, sx, sy, sw, sh, dx, dy, index) {
 
   // Haut
   ctx.moveTo(0, 0);
-  if (row > 1) {
-    ctx.lineTo(sw / 2 - bumpSize, 0);
-    ctx.quadraticCurveTo(sw / 2, -bumpSize, sw / 2 + bumpSize, 0);
-  }
+  // if (row > 1) {
+  ctx.lineTo(sw / 2 - bumpSize, 0);
+  ctx.quadraticCurveTo(sw / 2, -bumpSize, sw / 2 + bumpSize, 0);
+  //}
   ctx.lineTo(sw, 0);
 
   //Droite;
   ctx.lineTo(sw, sh / 2 - bumpSize);
-  if (col < gridSize - 1) {
-    ctx.quadraticCurveTo(sw + bumpSize, sh / 2, sw, sh / 2 + bumpSize);
-  }
+  //if (col < gridSize - 1) {
+  ctx.quadraticCurveTo(sw + bumpSize, sh / 2, sw, sh / 2 + bumpSize);
+  //}
   ctx.lineTo(sw, sh);
 
   ctx.lineTo(0, sh);
@@ -196,11 +194,11 @@ function drawPuzzlePieceFill(sourceCanvas, sx, sy, sw, sh, dx, dy, index) {
     sh + bumpSize
   );
 
-  ctx.textBaseline = "middle";
-  ctx.textAlign = "center";
-  ctx.font = `${sh / 2}px impact`;
-  ctx.fillStyle = "orange";
-  ctx.fillText(index, sw / 2, sh / 2);
+  offscreenCtx.textBaseline = "middle";
+  offscreenCtx.textAlign = "center";
+  offscreenCtx.font = `${canvas.height}px impact`;
+  offscreenCtx.fillStyle = "green";
+  offscreenCtx.fillText("1", canvas.width / 2, canvas.height / 2);
 
   // ctx.fillStyle = `rgb(${Math.random() * 255},${Math.random() * 255},${
   //   Math.random() * 255

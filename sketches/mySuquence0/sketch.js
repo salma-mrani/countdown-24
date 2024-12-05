@@ -1,131 +1,200 @@
 import { createEngine } from "../../shared/engine.js";
-
-const { renderer, run } = createEngine();
+import { Spring, createSpringSettings } from "../../shared/spring.js";
+const { renderer, run, math, input, finish } = createEngine();
 const { ctx, canvas } = renderer;
 
 // Configuration de la grille
 const rows = 10; // Nombre de lignes
 const cols = 20; // Nombre de colonnes
 const circleRadius = Math.min(canvas.width / cols, canvas.height / rows) * 0.5; // Taille des cercles
-const colors = ["#263b05", "#79ba14", "#596e39"]; // Couleurs pour chaque ligne
+const colors = ["#596e39", "#79ba14", "#263b05"]; // Couleurs pour chaque ligne
 
-// Variables pour stocker la position de la souris
-let mouseX = null;
-let mouseY = null;
+// Variables pour l'animation de la disparition progressive
+//let startTime = null;
+let lineFadeIndex = 0;
+let state = "starting";
+let stateTime = 0;
+
+// Dessiner le grand "0" dans un canvas temporaire (une seule fois)
+const offscreenCanvas = new OffscreenCanvas(canvas.width, canvas.height);
+const offscreenCtx = offscreenCanvas.getContext("2d");
+
+const bigZeroFontSize = canvas.height * 1.2; // Taille du "0"
+offscreenCtx.font = `${bigZeroFontSize}px Helvetica Neue, Helvetica, bold`;
+offscreenCtx.fillStyle = "green";
+offscreenCtx.textBaseline = "middle";
+offscreenCtx.textAlign = "center";
+offscreenCtx.fillText("0", canvas.width / 2, canvas.height / 2);
 
 // Génération des cercles
 const circles = [];
 for (let row = 0; row < rows; row++) {
-  const rowCircles = [];
   for (let col = 0; col < cols; col++) {
     const x = (col + 0.5) * (canvas.width / cols);
     const y = (row + 0.5) * (canvas.height / rows);
-    rowCircles.push({
+    circles.push({
       x,
       y,
       row,
       col,
-      flipped: false, // Statut de retournement
-      rotation: 0, // Angle de rotation (en degrés)
-      flipping: false, // Indique si une animation de retournement est en cours
+      rotationSpring: new Spring({
+        position: 90,
+        frequency: math.lerp(1.5, 2.5, Math.random()),
+        halfLife: math.lerp(0.1, 0.2, Math.random()),
+      }),
+      //flipped: false, // Statut de retournement
+      //rotation: 0, // Angle de rotation (en degrés)
+      //flipping: false, // Indique si une animation de retournement est en cours
     });
   }
-  circles.push(rowCircles); // Grouper les cercles par ligne
 }
-
-// Écouteurs d'événements pour suivre la souris
-canvas.addEventListener("mousemove", (e) => {
-  const rect = canvas.getBoundingClientRect();
-  mouseX = e.clientX - rect.left;
-  mouseY = e.clientY - rect.top;
-});
 
 // Fonction principale de rendu
 run(update);
 
-function update(dt) {
+function update(deltaTime) {
+  const mouseX = input.getX();
+  const mouseY = input.getY();
+
+  stateTime += deltaTime;
+
+  // update state
+  let newState;
+  switch (state) {
+    case "starting": {
+      if (stateTime > 1.5) {
+        newState = "playing";
+      }
+      break;
+    }
+    case "playing": {
+      // Vérifier la position de la souris et retourner toute la ligne correspondante
+      const rowHeight = canvas.height / rows;
+      const hoveredRow = Math.floor(mouseY / rowHeight); // Trouver la ligne survolée
+
+      // Retourner toute la ligne correspondante
+      if (input.isPressed()) {
+        circles.forEach((circle) => {
+          if (circle.row === hoveredRow) {
+            circle.rotationSpring.target = 0;
+          }
+        });
+      }
+      if (circles.every((circle) => circle.rotationSpring.target === 0)) {
+        newState = "waitForDisappear";
+      }
+      break;
+    }
+    case "waitForDisappear": {
+      if (stateTime > 1) {
+        newState = "disappear";
+      }
+      break;
+    }
+    case "disappear": {
+      if (stateTime > 1) {
+        newState = "finish";
+      }
+      break;
+    }
+  }
+
+  if (newState !== undefined) {
+    stateTime = 0;
+    state = newState;
+
+    // entered a new state
+    switch (state) {
+      case "starting": {
+        break;
+      }
+      case "playing": {
+        circles.forEach((circle) => {
+          circle.rotationSpring.target = 180;
+        });
+        break;
+      }
+      case "disappear": {
+        circles.forEach((circle) => {
+          circle.rotationSpring.target = -90;
+          circle.rotationSpring.settings = createSpringSettings({
+            frequency: math.lerp(3, 4, Math.random()),
+            halfLife: math.lerp(0.04, 0.07, Math.random()),
+          });
+        });
+        break;
+      }
+      case "finish": {
+        finish();
+        break;
+      }
+    }
+  }
+
+  // const currentTime = performance.now();
+  // if (!startTime) startTime = currentTime;
+
   // Effacer le canvas
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Dessiner le grand "0" dans un canvas temporaire (une seule fois)
-  const offscreenCanvas = document.createElement("canvas");
-  offscreenCanvas.width = canvas.width;
-  offscreenCanvas.height = canvas.height;
-  const offscreenCtx = offscreenCanvas.getContext("2d");
-
-  const bigZeroFontSize = canvas.height * 1.2; // Taille du "0"
-  offscreenCtx.font = `${bigZeroFontSize}px Helvetica Neue, Helvetica, bold`;
-  offscreenCtx.fillStyle = "green";
-  offscreenCtx.textBaseline = "middle";
-  offscreenCtx.textAlign = "center";
-  offscreenCtx.fillText("0", canvas.width / 2, canvas.height / 2);
-
-  // Vérifier la position de la souris et retourner toute la ligne correspondante
-  if (mouseX !== null && mouseY !== null) {
-    const rowHeight = canvas.height / rows;
-    const hoveredRow = Math.floor(mouseY / rowHeight); // Trouver la ligne survolée
-
-    // Retourner toute la ligne correspondante
-    circles.forEach((rowCircles) => {
-      rowCircles.forEach((circle) => {
-        if (!circle.flipping && !circle.flipped) {
-          if (circle.row === hoveredRow) {
-            circle.flipping = true; // Déclencher l'animation pour toute la ligne
-          }
-        }
-      });
-    });
-  }
+  circles.forEach((circle) => {
+    circle.rotationSpring.step(deltaTime);
+  });
 
   // Dessiner chaque cercle avec animation
-  circles.forEach((rowCircles) => {
-    rowCircles.forEach((circle) => {
-      const { x, y, row, col, flipped, rotation } = circle;
+  circles.forEach((circle) => {
+    const { x, y, row, col, flipped, rotation } = circle;
 
-      // Animation de rotation
-      if (circle.flipping) {
-        if (!flipped) {
-          circle.rotation += 5; // Augmenter l'angle progressivement
-          if (circle.rotation >= 180) {
-            circle.rotation = 180;
-            circle.flipped = true; // La rotation est complète
-            circle.flipping = false;
-          }
-        }
-      }
+    // Dessin du cercle
+    ctx.save();
+    ctx.translate(x, y);
+    // ctx.rotate((circle.rotationSpring.position * Math.PI) / 180); // Appliquer la rotation
+    const angleRad = math.toRadian(circle.rotationSpring.position + 90);
+    ctx.scale(Math.abs(Math.sin(angleRad)), 1);
+    ctx.beginPath();
+    ctx.arc(0, 0, circleRadius, 0, Math.PI * 2);
 
-      // Dessin du cercle
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate((rotation * Math.PI) / 180); // Appliquer la rotation
-      ctx.beginPath();
-      ctx.arc(0, 0, circleRadius, 0, Math.PI * 2);
+    if (circle.rotationSpring.position < 90) {
+      // Découper le morceau du grand "0" à afficher dans ce cercle
+      ctx.fillStyle = "#dae3ca";
+      ctx.fill();
+      ctx.clip(); // Appliquer le masque pour n'afficher qu'une partie du "0"
 
-      if (flipped) {
-        // Découper le morceau du grand "0" à afficher dans ce cercle
-        ctx.fillStyle = "#dae3ca";
-        ctx.fill();
-        ctx.clip(); // Appliquer le masque pour n'afficher qu'une partie du "0"
-
-        // Dessiner la portion du "0" correspondant à ce cercle
-        ctx.drawImage(
-          offscreenCanvas,
-          col * (canvas.width / cols), // Décalage selon la colonne
-          row * (canvas.height / rows), // Décalage selon la ligne
-          canvas.width / cols, // Largeur de la portion
-          canvas.height / rows, // Hauteur de la portion
-          -circleRadius, // Décalage pour centrer
-          -circleRadius, // Décalage pour centrer
-          circleRadius * 2, // Largeur de la portion
-          circleRadius * 2 // Hauteur de la portion
-        );
-      } else {
-        // Couleur avant retournement
-        ctx.fillStyle = colors[row % colors.length];
-        ctx.fill();
-      }
-      ctx.restore();
-    });
+      // Dessiner la portion du "0" correspondant à ce cercle
+      ctx.drawImage(
+        offscreenCanvas,
+        col * (canvas.width / cols), // Décalage selon la colonne
+        row * (canvas.height / rows), // Décalage selon la ligne
+        canvas.width / cols, // Largeur de la portion
+        canvas.height / rows, // Hauteur de la portion
+        -circleRadius, // Décalage pour centrer
+        -circleRadius, // Décalage pour centrer
+        circleRadius * 2, // Largeur de la portion
+        circleRadius * 2 // Hauteur de la portion
+      );
+    } else {
+      // Couleur avant retournement
+      ctx.fillStyle = colors[row % colors.length];
+      ctx.fill();
+    }
+    ctx.restore();
   });
+
+  // Après quelque secondes, commence la disparition des cercles, ligne par ligne
+  // if (currentTime - startTime > 1 && lineFadeIndex < rows) {
+  //   // Rendre la ligne actuelle noire
+  //   const fadeRow = circles[lineFadeIndex];
+  //   fadeRow.forEach((circle) => {
+  //     circle.flipped = true;
+  //     circle.flipping = false;
+  //   });
+  //lineFadeIndex++; // Passer à la ligne suivante
+
+  // Si toutes les lignes sont disparues, tout devient noir
+  if (lineFadeIndex >= rows) {
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
 }
+//}

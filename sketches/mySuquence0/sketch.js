@@ -10,7 +10,6 @@ const circleRadius = Math.min(canvas.width / cols, canvas.height / rows) * 0.5; 
 const colors = ["#596e39", "#79ba14", "#263b05"]; // Couleurs pour chaque ligne
 
 // Variables pour l'animation de la disparition progressive
-//let startTime = null;
 let lineFadeIndex = 0;
 let state = "starting";
 let stateTime = 0;
@@ -42,12 +41,12 @@ for (let row = 0; row < rows; row++) {
         frequency: math.lerp(1.5, 2.5, Math.random()),
         halfLife: math.lerp(0.1, 0.2, Math.random()),
       }),
-      //flipped: false, // Statut de retournement
-      //rotation: 0, // Angle de rotation (en degrés)
-      //flipping: false, // Indique si une animation de retournement est en cours
     });
   }
 }
+
+// Charger le son "flip.mp3"
+let clickSound = new Audio("flip.mp3");
 
 // Fonction principale de rendu
 run(update);
@@ -74,6 +73,11 @@ function update(deltaTime) {
 
       // Retourner toute la ligne correspondante
       if (input.isPressed()) {
+        // Jouer le son de clic lorsque la souris est cliquée
+        clickSound.play().catch((error) => {
+          console.error("Erreur lors de la lecture du son de clic :", error);
+        });
+
         circles.forEach((circle) => {
           if (circle.row === hoveredRow) {
             circle.rotationSpring.target = 0;
@@ -131,9 +135,6 @@ function update(deltaTime) {
     }
   }
 
-  // const currentTime = performance.now();
-  // if (!startTime) startTime = currentTime;
-
   // Effacer le canvas
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -144,12 +145,11 @@ function update(deltaTime) {
 
   // Dessiner chaque cercle avec animation
   circles.forEach((circle) => {
-    const { x, y, row, col, flipped, rotation } = circle;
+    const { x, y, row, col } = circle;
 
     // Dessin du cercle
     ctx.save();
     ctx.translate(x, y);
-    // ctx.rotate((circle.rotationSpring.position * Math.PI) / 180); // Appliquer la rotation
     const angleRad = math.toRadian(circle.rotationSpring.position + 90);
     ctx.scale(Math.abs(Math.sin(angleRad)), 1);
     ctx.beginPath();
@@ -181,20 +181,9 @@ function update(deltaTime) {
     ctx.restore();
   });
 
-  // Après quelque secondes, commence la disparition des cercles, ligne par ligne
-  // if (currentTime - startTime > 1 && lineFadeIndex < rows) {
-  //   // Rendre la ligne actuelle noire
-  //   const fadeRow = circles[lineFadeIndex];
-  //   fadeRow.forEach((circle) => {
-  //     circle.flipped = true;
-  //     circle.flipping = false;
-  //   });
-  //lineFadeIndex++; // Passer à la ligne suivante
-
   // Si toutes les lignes sont disparues, tout devient noir
   if (lineFadeIndex >= rows) {
     ctx.fillStyle = "black";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 }
-//}

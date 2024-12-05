@@ -29,6 +29,8 @@ for (let x = 0; x < gridSize; x++) {
   }
 }
 
+console.log(originalPositions);
+
 // Mélanger les positions
 
 let currentPositions = [...originalPositions];
@@ -193,6 +195,12 @@ function drawPuzzlePieceFill(sourceCanvas, sx, sy, sw, sh, dx, dy, index) {
     sw + bumpSize,
     sh + bumpSize
   );
+
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "center";
+  ctx.font = `${sh / 2}px impact`;
+  ctx.fillStyle = "orange";
+  ctx.fillText(index, sw / 2, sh / 2);
 
   // ctx.fillStyle = `rgb(${Math.random() * 255},${Math.random() * 255},${
   //   Math.random() * 255

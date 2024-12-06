@@ -1,18 +1,26 @@
 import { createEngine } from "../../shared/engine.js";
 import { Spring } from "../../shared/spring.js";
 
-const { renderer, run, input, math } = createEngine();
+const { renderer, run, input, math, finish, audio } = createEngine();
 const { ctx, canvas } = renderer;
 
 let isRevealed = false; // Flag pour vérifier si le numéro a été révélé
 const revealRadius = 10; // Rayon autour du numéro à gratter
 
-const fontSize = canvas.height / 2;
+const fontSize = canvas.height / 4;
 
 // Charger l'image
 const coinImage = new Image();
 coinImage.src = "./coin.png"; // Chemin vers l'image
 
+let volume = 0;
+// Charger le son
+const scratchSoundFile = await audio.load({
+  src: "./gratte.wav",
+  loop: true,
+}); // Chemin vers le fichier audio
+const scratchSound = scratchSoundFile.play();
+scratchSound.setVolume(volume);
 // Fonction pour générer des coordonnées aléatoires
 function getRandomPosition() {
   const paddingX = fontSize * 0.3;
@@ -22,11 +30,27 @@ function getRandomPosition() {
   return { x, y };
 }
 
+// Fonction pour générer un chiffre aléatoire sauf 3
+function getRandomDigitExcludingThree() {
+  let value;
+  do {
+    value = Math.floor(Math.random() * 10); // Générer un chiffre entre 0 et 9
+  } while (value === 3); // Réessayer si le chiffre est 3
+  return value;
+}
+
+// Ajouter à la liste des chiffres aléatoires
+const randomNumbers = Array.from({ length: 5 }, () => ({
+  value: getRandomDigitExcludingThree(), // Générer un chiffre aléatoire sauf 3
+  position: getRandomPosition(), // Générer une position aléatoire
+}));
+
 const scratchCanvas = new OffscreenCanvas(canvas.width, canvas.height);
 const scratchCtx = scratchCanvas.getContext("2d");
 scratchCtx.globalCompositeOperation = "source-over";
 scratchCtx.fillStyle = "black";
 scratchCtx.fillRect(0, 0, scratchCanvas.width, scratchCanvas.height);
+finish();
 
 let prevMouseX;
 let prevMouseY;
@@ -72,7 +96,7 @@ run((deltaTime) => {
   const gradient = ctx.createLinearGradient(-fontSize, 0, fontSize, 0);
   const glowPosition = (Math.sin(glowPhase) + 1) / 2; // Position oscillante entre 0 et 1
   gradient.addColorStop(0, "yellow");
-  gradient.addColorStop(glowPosition, "green"); // Couleur brillante
+  gradient.addColorStop(glowPosition, "orange"); // Couleur brillante
   gradient.addColorStop(1, "yellow");
 
   ctx.fillStyle = gradient;
@@ -87,6 +111,16 @@ run((deltaTime) => {
   const metrics = ctx.measureText("3");
   ctx.restore();
 
+  // Dessiner les chiffres aléatoires
+  ctx.save();
+  ctx.fillStyle = "green"; // Couleur verte pour les chiffres aléatoires
+  ctx.font = `${fontSize / 1}px impact`; // Taille plus petite pour différencier
+  randomNumbers.forEach(({ value, position }) => {
+    ctx.fillText(value, position.x, position.y);
+  });
+  ctx.restore();
+
+  let targetVolume = 0;
   // Grattage (scratch) sur le canvas secondaire
   if (input.hasStarted() && input.isPressed()) {
     scratchCtx.globalCompositeOperation = "destination-out"; // Mode effaçage
@@ -98,12 +132,21 @@ run((deltaTime) => {
 
     if (input.isDown()) {
       scratchCtx.moveTo(mouseX + 1, mouseY);
+      // Jouer le son si la souris est maintenue
     } else {
       scratchCtx.moveTo(prevMouseX, prevMouseY);
     }
     scratchCtx.lineTo(mouseX, mouseY);
     scratchCtx.stroke();
+
+    const speed = math.dist(prevMouseX, prevMouseY, mouseX, mouseY) / deltaTime;
+    targetVolume = math.mapClamped(speed, 0, 800, 0, 1);
+    console.log(targetVolume);
   }
+
+  volume = math.lerp(volume, targetVolume, 0.2);
+  scratchSound.setVolume(volume);
+  scratchSound.setRate(math.lerp(0, 1.5, volume));
 
   ctx.fillRect(0, -canvas.height * 10 + 1, canvas.width, canvas.height * 10);
   ctx.drawImage(scratchCanvas, 0, 0);
@@ -131,9 +174,11 @@ run((deltaTime) => {
   const totalCount = data.length / 4;
   const fill = count / totalCount;
 
+  // Si plus de 94% de la zone a été grattée
   if (fill < 0.06) {
     isFinished = true;
     isRevealed = true;
+    // Appel à la fonction finish() lorsque l'animation est terminée
   }
 
   prevMouseX = mouseX;

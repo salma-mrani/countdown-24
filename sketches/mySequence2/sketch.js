@@ -1,7 +1,7 @@
 import { createEngine } from "../../shared/engine.js";
 import { Spring } from "../../shared/spring.js";
 
-const { renderer, run, input } = createEngine();
+const { renderer, run, input, finish } = createEngine();
 const { ctx, canvas } = renderer;
 
 let particles = []; // Tableau des particules
@@ -150,7 +150,7 @@ run((deltaTime) => {
 
     // Arrêter l'animation si toutes les particules ont disparu
     if (particles.length === 0) {
-      exploded = false; // Réinitialiser pour éviter toute nouvelle explosion
+      finish();
     }
   }
 });

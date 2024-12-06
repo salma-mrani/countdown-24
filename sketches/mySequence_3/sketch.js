@@ -50,7 +50,6 @@ const scratchCtx = scratchCanvas.getContext("2d");
 scratchCtx.globalCompositeOperation = "source-over";
 scratchCtx.fillStyle = "black";
 scratchCtx.fillRect(0, 0, scratchCanvas.width, scratchCanvas.height);
-finish();
 
 let prevMouseX;
 let prevMouseY;
@@ -80,6 +79,10 @@ run((deltaTime) => {
     canvasYSpeed += 1000 * deltaTime;
   }
   canvasY += canvasYSpeed * deltaTime;
+
+  if (canvasY > 2000) {
+    finish();
+  }
 
   ctx.translate(0, canvasY);
 

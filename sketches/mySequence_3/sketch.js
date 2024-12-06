@@ -86,6 +86,15 @@ run((deltaTime) => {
 
   ctx.translate(0, canvasY);
 
+  // Dessiner les chiffres aléatoires
+  ctx.save();
+  ctx.fillStyle = "green"; // Couleur verte pour les chiffres aléatoires
+  ctx.font = `${fontSize / 1}px impact`; // Taille plus petite pour différencier
+  randomNumbers.forEach(({ value, position }) => {
+    ctx.fillText(value, position.x, position.y);
+  });
+  ctx.restore();
+
   // Sauvegarde du contexte
   ctx.save();
   ctx.translate(x, y); // Déplace l'origine vers le centre du texte
@@ -113,16 +122,6 @@ run((deltaTime) => {
 
   const metrics = ctx.measureText("3");
   ctx.restore();
-
-  // Dessiner les chiffres aléatoires
-  ctx.save();
-  ctx.fillStyle = "green"; // Couleur verte pour les chiffres aléatoires
-  ctx.font = `${fontSize / 1}px impact`; // Taille plus petite pour différencier
-  randomNumbers.forEach(({ value, position }) => {
-    ctx.fillText(value, position.x, position.y);
-  });
-  ctx.restore();
-
   let targetVolume = 0;
   // Grattage (scratch) sur le canvas secondaire
   if (input.hasStarted() && input.isPressed()) {

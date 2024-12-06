@@ -68,7 +68,7 @@ function createParticlesFromExistingText(x, y, scaleX, scaleY, text) {
         vx: Math.random() * 100 - 2, // Vitesse aléatoire en x
         vy: Math.random() * 50 - 10, // Vitesse aléatoire en y
         size: Math.random() * 7 + 1.5, // Taille des particules
-        life: Math.random() * 10 + 10, // Durée de vie
+        life: Math.random() * 10 + 100, // Durée de vie
       });
     }
   }

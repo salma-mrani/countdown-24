@@ -57,7 +57,7 @@ function createParticlesFromExistingText(x, y, scaleX, scaleY, text) {
   const data = imageData.data;
 
   // Générer des particules à partir des pixels visibles
-  for (let i = 0; i < data.length; i += 100) {
+  for (let i = 0; i < data.length; i += 200) {
     const alpha = data[i + 3];
     if (alpha > 128) {
       const px = (i / 4) % textCanvas.width;
@@ -67,8 +67,8 @@ function createParticlesFromExistingText(x, y, scaleX, scaleY, text) {
         y: py,
         vx: Math.random() * 100 - 2, // Vitesse aléatoire en x
         vy: Math.random() * 50 - 10, // Vitesse aléatoire en y
-        size: Math.random() * 2 + 1.5, // Taille des particules
-        life: Math.random() * 100 + 100, // Durée de vie
+        size: Math.random() * 7 + 1.5, // Taille des particules
+        life: Math.random() * 10 + 10, // Durée de vie
       });
     }
   }
